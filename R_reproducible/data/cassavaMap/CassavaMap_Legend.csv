@@ -1,0 +1,32 @@
+LEGEND,
+CassavaMap_Prod_v1.csv,
+ID,Record ID
+AdmLevel,"Level of administrative division of reported production data (0: country level, 1: first adm division level, 2: second adm division level)"
+Year,Year of reported production data
+Source,Source of production data
+Country,Country
+Region_code,Unique code of adm unit derived from data sources (where provided)
+Region,Name of administrative unit
+PopRural,"Number of population in administrative unit. Values are derived from LandScan 2014 in pixels with values below 5,000. Values above 5,000 were masked out from the LandScan raster."
+Prod,Reported cassava production in administrative unit [tonnes]
+Country_Prod_Sum,Sum of reported cassava production per country in the data source
+Country_Prod_FAOSTAT14,National production as reported by FAO for 2014
+Prod_FAO14adj,Production in given adm unit adjusted to 2014 FAO levels
+Prod_PerCapita,Cassava production obtained from original data source per capita
+Prod_PerCapita_FAO14Adj,Cassava production obtained from original data source per capita adjusted to 2014 FAO levels
+,
+CassavaMap_HA_v1.csv,
+ID,Record ID
+AdmLevel,"Level of administrative division of reported harvested area data (0: country level, 1: first adm division level, 2: second adm division level)"
+Year,Year of reported harvested area data
+Source,Source of harvested area data
+Country,Country
+Region_code,Unique code of adm unit derived from data sources (where provided)
+Region,Name of administrative unit
+PopRural,"Number of population in administrative unit. Values are derived from LandScan 2014 in pixels with values below 5,000. Values above 5,000 were masked out from the LandScan raster."
+HA,Reported cassava harvested area in administrative unit [hectares]
+CountryHA_Sum,Sum of reported cassava harvested area per country in the data source
+Country_HA_FAOSTAT14,National harvested area as reported by FAO for 2014
+HA_FAO14adj,Harvested area in given adm unit adjusted to 2014 FAO levels
+HA_PerCapita,Cassava harvested area obtained from original data source per capita
+HA_PerCapita_FAO14Adj,Cassava harvested area obtained from original data source per capita adjusted to 2014 FAO levels
