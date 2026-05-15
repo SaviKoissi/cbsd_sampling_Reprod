@@ -1,0 +1,35 @@
+"State","baseline","single_detection","survey_adjacent","host_density","host_single_detection"
+"Yobe",1,1,1,1,1
+"Sokoto",1,1,1,1,1
+"Katsina",1,1,1,1,1
+"Jigawa",2,2,5,2,2
+"Kebbi",1,1,1,1,1
+"Zamfara",1,1,1,1,1
+"Bauchi",1,1,1,1,1
+"Kano",1,1,1,1,1
+"Kaduna",1,1,1,1,1
+"Gombe",1,1,1,1,1
+"Borno",1,1,1,1,1
+"Adamawa",1,1,1,1,1
+"Plateau",3,3,5,3,3
+"Taraba",1,1,1,1,1
+"Kwara",1,1,1,1,1
+"Oyo",1,1,1,1,1
+"Kogi",1,1,1,1,1
+"Osun",1,1,1,1,1
+"Ekiti",1,1,1,1,1
+"Benue",1,1,1,1,1
+"Ondo",1,1,1,1,1
+"Edo",1,1,1,1,1
+"Ogun",1,1,1,1,1
+"Cross River",1,1,1,1,1
+"Enugu",1,1,1,1,1
+"Lagos",4,4,4,4,4
+"Ebonyi",NA,NA,NA,NA,NA
+"Anambra",NA,NA,NA,NA,NA
+"Delta",NA,NA,NA,NA,NA
+"Abia",NA,NA,NA,NA,NA
+"Imo",NA,NA,NA,NA,NA
+"Rivers",NA,NA,NA,NA,NA
+"Akwa Ibom",NA,NA,NA,NA,NA
+"Bayelsa",NA,NA,NA,NA,NA
