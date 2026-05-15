@@ -1,136 +1,29 @@
 #run_surveillance.R
 
-# # sampling estimation
-# n_surveys = 2000
-# run_surveillance <- function(sim, accessible_cells, grid_template,
-#                              strategy_fun,
-#                              n_surveys = 600,
-#                              params_field = list(n_plants = 100),
-#                              detection_accuracy = 1.0,
-#                              adjacency_list = NULL) {
-#   
-#   state_ids <- unique(grid_template$state_id)
-#   
-#   state_status <- setNames(rep("not_detected", length(state_ids)), state_ids)
-#   detection_year <- setNames(rep(NA, length(state_ids)), state_ids)
-#   
-#   for (t in seq_along(sim)) {
-#     
-#     cat("Year:", t, "\n")
-#     
-#     grid <- sim[[t]]
-#     
-#     #-------------------------------
-#     # Select cells depending on strategy
-#     #-------------------------------
-#     if (identical(strategy_fun, strategy_survey_adjacent)) {
-#       selected_cells <- strategy_fun(
-#         cells = accessible_cells,
-#         grid = grid,
-#         n = n_surveys,
-#         state_status = state_status,
-#         adjacency_list = adjacency_list
-#       )
-#       
-#     } else if (identical(strategy_fun, strategy_single_detection) ||
-#                identical(strategy_fun, strategy_host_density_single_detection)) {
-#       
-#       selected_cells <- strategy_fun(
-#         cells = accessible_cells,
-#         grid = grid,
-#         n = n_surveys,
-#         state_status = state_status
-#       )
-#       
-#     } else if (identical(strategy_fun, strategy_host_density)) {
-#       
-#       selected_cells <- strategy_fun(
-#         cells = accessible_cells,
-#         grid = grid,
-#         n = n_surveys
-#       )
-#       
-#     } else {
-#       
-#       selected_cells <- strategy_fun(
-#         cells = accessible_cells,
-#         n = n_surveys
-#       )
-#     }
-#     
-#     if (length(selected_cells) == 0) next
-#     
-#     #-------------------------------
-#     # Detection
-#     #-------------------------------
-#     detections <- sapply(selected_cells, function(i) {
-#       
-#       field <- simulate_field(
-#         time_since_infection = grid$infected_prop[i],
-#         params = params_field
-#       )
-#       
-#       detect_field(field, accuracy = detection_accuracy)
-#     })
-#     
-#     detected_cells <- selected_cells[detections == TRUE]
-#     
-#     #-------------------------------
-#     # Update states
-#     #-------------------------------
-#     state_status <- update_state_detection(
-#       state_status,
-#       detected_cells,
-#       grid
-#     )
-#     
-#     newly_detected <- names(state_status)[
-#       state_status == "detected" & is.na(detection_year)
-#     ]
-#     
-#     detection_year[newly_detected] <- t
-#     
-#     if (all(state_status == "detected")) break
-#   }
-#   
-#   return(detection_year)
-# }
-
-#========================================================
-# RUN SURVEILLANCE SIMULATION
-#========================================================
-
-run_surveillance <- function(sim,
-                             accessible_cells,
-                             grid_template,
+# sampling estimation
+n_surveys = 2000
+run_surveillance <- function(sim, accessible_cells, grid_template,
                              strategy_fun,
                              n_surveys = 600,
                              params_field = list(n_plants = 100),
                              detection_accuracy = 1.0,
                              adjacency_list = NULL) {
   
-  #------------------------------------------------------
-  # Initialize state tracking
-  #------------------------------------------------------
   state_ids <- unique(grid_template$state_id)
   
   state_status <- setNames(rep("not_detected", length(state_ids)), state_ids)
   detection_year <- setNames(rep(NA, length(state_ids)), state_ids)
   
-  #------------------------------------------------------
-  # Main yearly loop
-  #------------------------------------------------------
   for (t in seq_along(sim)) {
     
     cat("Year:", t, "\n")
     
     grid <- sim[[t]]
     
-    #--------------------------------------------------
-    # Strategy selection (ALL assume row-index system)
-    #--------------------------------------------------
+    #-------------------------------
+    # Select cells depending on strategy
+    #-------------------------------
     if (identical(strategy_fun, strategy_survey_adjacent)) {
-      
       selected_cells <- strategy_fun(
         cells = accessible_cells,
         grid = grid,
@@ -167,54 +60,207 @@ run_surveillance <- function(sim,
     
     if (length(selected_cells) == 0) next
     
-    #--------------------------------------------------
-    # DETECTION STEP (FIXED)
-    #--------------------------------------------------
+    #-------------------------------
+    # Detection
+    # #-------------------------------
+    # detections <- sapply(selected_cells, function(i) {
+    #   
+    #   field <- simulate_field(
+    #     time_since_infection = grid$infected_prop[i],
+    #     params = params_field
+    #   )
+    #   
+    #   detect_field(field, accuracy = detection_accuracy)
+    # })
+    # inside run_surveillance.R loop:
+    
     detections <- sapply(selected_cells, function(i) {
       
-      # ❗ FIX:
-      # infected_prop is NOT infection age.
-      # We convert it into a proxy signal to prevent NA collapse.
-      #
-      # TEMPORARY assumption:
-      # higher prevalence → longer infection duration
+      # Extract proportion and handle potential NAs
+      p_val <- grid$infected_prop[i]
       
-      #infection_proxy_time <- grid$infected_prop[i] * 12  # scale to months
-      infection_proxy_time = sample(6:24, 1)
+      # The Fix: Check for NA before comparing to 0
+      if (is.na(p_val) || p_val <= 0) {
+        return(FALSE)
+      }
       
+      # Use the scaled version of the field simulation
       field <- simulate_field(
-        time_since_infection = infection_proxy_time,
+        inf_prop = p_val, 
         params = params_field
       )
       
       detect_field(field, accuracy = detection_accuracy)
     })
     
-    detected_cells <- selected_cells[which(detections)]
     
-    #--------------------------------------------------
-    # UPDATE STATE DETECTIONS
-    #--------------------------------------------------
-    if (length(detected_cells) > 0) {
-      
-      state_status <- update_state_detection(
-        state_status,
-        detected_cells,
-        grid
-      )
-      
-      newly_detected <- names(state_status)[
-        state_status == "detected" & is.na(detection_year)
-      ]
-      
-      detection_year[newly_detected] <- t
-    }
+    detected_cells <- selected_cells[detections == TRUE]
     
-    #--------------------------------------------------
-    # EARLY STOP CONDITION
-    #--------------------------------------------------
+    #-------------------------------
+    # Update states
+    #-------------------------------
+    state_status <- update_state_detection(
+      state_status,
+      detected_cells,
+      grid
+    )
+    
+    newly_detected <- names(state_status)[
+      state_status == "detected" & is.na(detection_year)
+    ]
+    
+    detection_year[newly_detected] <- t
+    
     if (all(state_status == "detected")) break
   }
   
   return(detection_year)
 }
+
+update_state_detection <- function(state_status, detected_cells, grid) {
+  
+  if (length(detected_cells) == 0) return(state_status)
+  
+  # remove invalid cells
+  detected_cells <- detected_cells[!is.na(detected_cells)]
+  
+  # map to states safely
+  detected_states <- grid$state_id[detected_cells]
+  detected_states <- unique(detected_states)
+  
+  # remove invalid states
+  detected_states <- detected_states[
+    !is.na(detected_states) &
+      detected_states != "UNKNOWN"
+  ]
+  
+  if (length(detected_states) == 0) return(state_status)
+  
+  state_status[detected_states] <- "detected"
+  
+  state_status
+}
+
+#========================================================
+# RUN SURVEILLANCE SIMULATION
+#========================================================
+
+# run_surveillance <- function(sim,
+#                              accessible_cells,
+#                              grid_template,
+#                              strategy_fun,
+#                              n_surveys = 600,
+#                              params_field = list(n_plants = 100),
+#                              detection_accuracy = 1.0,
+#                              adjacency_list = NULL) {
+#   
+#   #------------------------------------------------------
+#   # Initialize state tracking
+#   #------------------------------------------------------
+#   state_ids <- unique(grid_template$state_id)
+#   
+#   state_status <- setNames(rep("not_detected", length(state_ids)), state_ids)
+#   detection_year <- setNames(rep(NA, length(state_ids)), state_ids)
+#   
+#   #------------------------------------------------------
+#   # Main yearly loop
+#   #------------------------------------------------------
+#   for (t in seq_along(sim)) {
+#     
+#     cat("Year:", t, "\n")
+#     
+#     grid <- sim[[t]]
+#     
+#     #--------------------------------------------------
+#     # Strategy selection (ALL assume row-index system)
+#     #--------------------------------------------------
+#     if (identical(strategy_fun, strategy_survey_adjacent)) {
+#       
+#       selected_cells <- strategy_fun(
+#         cells = accessible_cells,
+#         grid = grid,
+#         n = n_surveys,
+#         state_status = state_status,
+#         adjacency_list = adjacency_list
+#       )
+#       
+#     } else if (identical(strategy_fun, strategy_single_detection) ||
+#                identical(strategy_fun, strategy_host_density_single_detection)) {
+#       
+#       selected_cells <- strategy_fun(
+#         cells = accessible_cells,
+#         grid = grid,
+#         n = n_surveys,
+#         state_status = state_status
+#       )
+#       
+#     } else if (identical(strategy_fun, strategy_host_density)) {
+#       
+#       selected_cells <- strategy_fun(
+#         cells = accessible_cells,
+#         grid = grid,
+#         n = n_surveys
+#       )
+#       
+#     } else {
+#       
+#       selected_cells <- strategy_fun(
+#         cells = accessible_cells,
+#         n = n_surveys
+#       )
+#     }
+#     
+#     if (length(selected_cells) == 0) next
+#     
+#     #--------------------------------------------------
+#     # DETECTION STEP (FIXED)
+#     #--------------------------------------------------
+#     detections <- sapply(selected_cells, function(i) {
+#       
+#       # ❗ FIX:
+#       # infected_prop is NOT infection age.
+#       # We convert it into a proxy signal to prevent NA collapse.
+#       #
+#       # TEMPORARY assumption:
+#       # higher prevalence → longer infection duration
+#       
+#       #infection_proxy_time <- grid$infected_prop[i] * 12  # scale to months
+#       infection_proxy_time = sample(6:24, 1)
+#       
+#       field <- simulate_field(
+#         time_since_infection = infection_proxy_time,
+#         params = params_field
+#       )
+#       
+#       detect_field(field, accuracy = detection_accuracy)
+#     })
+#     
+#     detected_cells <- selected_cells[which(detections)]
+#     
+#     #--------------------------------------------------
+#     # UPDATE STATE DETECTIONS
+#     #--------------------------------------------------
+#     if (length(detected_cells) > 0) {
+#       
+#       state_status <- update_state_detection(
+#         state_status,
+#         detected_cells,
+#         grid
+#       )
+#       
+#       newly_detected <- names(state_status)[
+#         state_status == "detected" & is.na(detection_year)
+#       ]
+#       
+#       detection_year[newly_detected] <- t
+#     }
+#     
+#     #--------------------------------------------------
+#     # EARLY STOP CONDITION
+#     #--------------------------------------------------
+#     if (all(state_status == "detected")) break
+#   }
+#   
+#   return(detection_year)
+# }
+

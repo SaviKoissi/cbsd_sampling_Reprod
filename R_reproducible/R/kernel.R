@@ -5,6 +5,7 @@ power_kernel <- function(distance, alpha, beta) {
   beta * (distance + 1)^(-alpha)
 }
 
+
 # # Compute infection pressure across grid
 # compute_infection_pressure <- function(grid, coords, alpha, beta) {
 #   dist_mat <- as.matrix(dist(coords))
