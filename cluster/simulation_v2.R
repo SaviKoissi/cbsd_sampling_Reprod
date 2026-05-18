@@ -1,0 +1,64 @@
+library(terra)
+library(dplyr)
+
+# Bypassing SF entirely to break the cluster library cache
+attach_states <- function(grid, raster_ref, states_sf, country_extent = NULL) {
+  
+  print("DEBUG: Executing the completely updated, zero-sf joining engine...")
+  
+  # 1. Coordinate Validation
+  coords <- terra::xyFromCell(raster_ref, grid$cell_id)
+  
+  # 2. Convert to SpatVector safely (only if it isn't one already)
+  if (inherits(states_sf, "SpatVector")) {
+    vec_states <- states_sf
+  } else {
+    vec_states <- terra::vect(states_sf)
+  }
+  
+  # 3. Build a spatial point vector from our coordinate matrix
+  pts <- terra::vect(coords, crs=terra::crs(vec_states))
+  
+  # 4. Use terra's built-in extraction tool (Fast planar overlay)
+  joined_data <- terra::extract(vec_states, pts)
+  
+  # 5. Dynamically search for the administrative name column
+  col_names <- names(joined_data)
+  state_col <- intersect(col_names, c("adm1_name", "ADM1_NAME", "name_1", "NAME_1", "NOM_1"))[1]
+  
+  if (is.na(state_col)) {
+    stop("Could not find state name column. Columns found: ", paste(col_names, collapse=", "))
+  }
+  
+  # 6. Extract values safely
+  state_vec <- as.character(joined_data[[state_col]])
+  state_vec[is.na(state_vec)] <- "UNKNOWN"
+  
+  grid$state_id <- state_vec
+  return(grid)
+}
+
+# --- RESUMING MAIN PIPELINE EXECUTION ---
+base_dir <- "/home/savi/project/SurveyCBSD/SurveyCBSD/R_reproducible"
+
+print("Loading raw numeric matrix inputs...")
+cassava_mat  <- readRDS(file.path(base_dir, "data/cassavaMap/cassava_nigeria.rds"))
+whitefly_mat <- readRDS(file.path(base_dir, "data/whitefly/whitefly.rds"))
+disease_mat  <- readRDS(file.path(base_dir, "data/whitefly/disease.rds"))
+
+# Reconstruct baseline grid frameworks
+cassava <- terra::rast(cassava_mat)
+terra::crs(cassava) <- "EPSG:4326"
+terra::ext(cassava) <- c(2.6685, 14.6788, 4.2730, 13.8944)
+
+print("Loading vector spatial boundaries...")
+states <- terra::vect(file.path(base_dir, "data/state_boundaries/nga_admin1.shp"))
+
+# Mocking dummy grid framework for execution testing
+grid <- data.frame(cell_id = 1:terra::ncell(cassava))
+
+print("Executing spatial join process...")
+grid <- attach_states(grid, cassava, states)
+
+print("SUCCESS: Join complete! Previewing data structure:")
+print(head(grid))

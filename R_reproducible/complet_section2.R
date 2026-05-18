@@ -9,8 +9,88 @@ library(terra)
 library(sf)
 library(tidyverse)
 
-# Load your data (Assuming paths are correct)
+#-----------------------------------
+# Source codes
+#----------------------------------
+source("R/grid_construction.R")
+source("R/attach_states.R")
+source("R/sampling.R")
+source("scripts/run_surveillance.R")
+source("R/within_field_model.R")
+
+
+#------------------------------------
+# LOAD DATA
+#------------------------------------
+cassava  <- rast("data/cassavaMap/cassava_nigeria.tif")
+whitefly <- rast("data/whitefly/whitefly.tif")
+states   <- st_read("data/state_boundaries/nga_admin1.shp", quiet = TRUE)
+
+#------------------------------------
+# ALIGNMENT (CRITICAL FIX)
+#------------------------------------
+whitefly_aligned <- resample(
+  whitefly,
+  cassava,
+  method = "bilinear"
+)
+
+#------------------------------------
+# GRID
+#------------------------------------
+grid <- create_grid(cassava, whitefly_aligned)
+
+#------------------------------------
+# STATE ATTACHMENT (FIXED)
+#------------------------------------
+grid <- attach_states(grid, cassava, states)
+
+# sanity check (IMPORTANT)
+stopifnot(!all(is.na(grid$state_id)))
+
+#------------------------------------
+# COORDS (SINGLE SOURCE OF TRUTH)
+#------------------------------------
+coords <- terra::xyFromCell(cassava, grid$cell_id)
+
+#------------------------------------
+# ACCESSIBILITY
+#------------------------------------
+roads <- st_read("data/road_network/NGA_roads.shp", quiet = TRUE)
+
+grid_sf <- st_as_sf(
+  data.frame(cell_id = grid$cell_id, x = coords[,1], y = coords[,2]),
+  coords = c("x", "y"),
+  crs = st_crs(cassava)
+)
+
+grid_sf <- st_transform(grid_sf, 3857)
+roads   <- st_transform(roads, 3857)
+
+accessible_cells <- select_accessible_cells(grid_sf, roads)
+
+# Before running run_surveillance
+grid_clean <- grid[grid$state_id != "UNKNOWN", ]
+# Filter accessible_cells to ensure they only contain indices 
+# that actually exist in your grid and have non-NA values
+accessible_cells <- accessible_cells[accessible_cells <= nrow(grid)]
+valid_accessible <- accessible_cells[accessible_cells %in% grid_clean$row_id]
+
 sim <- readRDS("outputs/simulation.rds")
+
+
+# Check if any infected_prop in the simulation are actually NA
+any_nas <- any(sapply(sim, function(x) any(is.na(x$infected_prop))))
+if(any_nas) {
+  message("Warning: sim object contains NAs in infected_prop. Cleaning...")
+  sim <- lapply(sim, function(df) {
+    df$infected_prop[is.na(df$infected_prop)] <- 0
+    return(df)
+  })
+}
+#------------------------------------
+
+#------------------------------------
 
 
 # --- Adjacency List for Nigeria (Simplified example of 5 key states) ---
@@ -58,7 +138,7 @@ safe_sample <- function(cells, n, weights = NULL) {
 }
 
 run_surveillance_full <- function(sim, accessible_cells, grid_template, 
-                                  strategy_name, n_surveys = 2000, 
+                                  strategy_name, n_surveys = 20000, 
                                   adj_list = nigeria_adj) {
   
   # 1. Initialize
@@ -152,7 +232,7 @@ for (s in strategies) {
     accessible_cells = valid_accessible, 
     grid_template = grid_clean, 
     strategy_name = s,
-    n_surveys = 20000
+    n_surveys = 200000
   )
 }
 
